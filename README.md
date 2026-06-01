@@ -1,4 +1,4 @@
-# 🍔 Food Delivery App — Backend
+# Foodies API — Backend
 
 REST API backend for the Food Delivery application. Built with **Spring Boot**, secured with **JWT**, connected to **MongoDB Atlas**, and integrated with **Razorpay** for payments.
 
@@ -9,7 +9,7 @@ REST API backend for the Food Delivery application. Built with **Spring Boot**, 
 | Layer | Technology |
 |-------|-----------|
 | Framework | Spring Boot 3.x |
-| Language | Java 17+ |
+| Language | Java 21 |
 | Database | MongoDB Atlas |
 | Authentication | JWT (JSON Web Tokens) |
 | Security | Spring Security |
@@ -22,37 +22,37 @@ REST API backend for the Food Delivery application. Built with **Spring Boot**, 
 ## Project Structure
 
 ```
-backend/
+foodiesapi-backend/
 ├── src/
 │   └── main/
-│       ├── java/com/fooddelivery/
+│       ├── java/in/souravkadam/foodiesapi/
 │       │   ├── config/
-│       │   │   ├── SecurityConfig.java       # Spring Security + CORS config
-│       │   │   └── JwtConfig.java            # JWT filter & token util
+│       │   │   ├── SecurityConfig.java        # Spring Security + CORS config
+│       │   │   ├── WebConfig.java             # Jackson / serialization config
+│       │   │   └── AdminSeeder.java           # Auto-creates admin user on startup
 │       │   ├── controller/
-│       │   │   ├── AuthController.java       # /api/register, /api/login
-│       │   │   ├── FoodController.java       # /api/foods
-│       │   │   ├── CartController.java       # /api/cart
-│       │   │   └── OrderController.java      # /api/orders
-│       │   ├── model/
-│       │   │   ├── User.java
-│       │   │   ├── Food.java
-│       │   │   ├── Cart.java
-│       │   │   ├── Order.java
-│       │   │   └── OrderItem.java
-│       │   ├── repository/
-│       │   │   ├── UserRepository.java
-│       │   │   ├── FoodRepository.java
-│       │   │   ├── CartRepository.java
-│       │   │   └── OrderRepository.java
-│       │   └── service/
-│       │       ├── AuthService.java
-│       │       ├── FoodService.java
-│       │       ├── CartService.java
-│       │       └── OrderService.java
+│       │   │   ├── AuthController.java        # /api/register, /api/login
+│       │   │   ├── FoodController.java        # /api/foods
+│       │   │   ├── CartController.java        # /api/cart
+│       │   │   ├── OrderController.java       # /api/orders
+│       │   │   ├── UserController.java        # /api/users (admin)
+│       │   │   └── DashboardController.java   # /api/admin/dashboard
+│       │   ├── Entity/
+│       │   │   ├── UserEntity.java
+│       │   │   ├── FoodEntity.java
+│       │   │   ├── CartEntity.java
+│       │   │   ├── OrderEntity.java
+│       │   │   └── LoginHistory.java
+│       │   ├── io/                            # Request/Response DTOs
+│       │   ├── repository/                    # Spring Data MongoDB repos
+│       │   ├── service/                       # Business logic interfaces + impls
+│       │   ├── filters/                       # JWT request filter
+│       │   └── util/                          # Helper utilities
 │       └── resources/
-│           ├── application.properties        # Local config
-│           └── application-prod.properties   # Production config (uses env vars)
+│           ├── application.properties         # Local config (uses env var defaults)
+│           └── application-prod.properties    # Production config (env vars only)
+├── Dockerfile                                 # Multi-stage Docker build for Render
+├── system.properties                          # Java version hint
 ├── pom.xml
 └── README.md
 ```
@@ -61,9 +61,9 @@ backend/
 
 ## Prerequisites
 
-- Java JDK 17+ → https://adoptium.net
-- Maven 3.8+ → https://maven.apache.org
-- MongoDB Atlas account → https://cloud.mongodb.com ✅ (already provisioned)
+- Java JDK 21 → https://adoptium.net
+- Maven 3.9+ → https://maven.apache.org
+- MongoDB Atlas account → https://cloud.mongodb.com
 
 ---
 
@@ -72,120 +72,85 @@ backend/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Souravkadam/Fooddelivery_app.git
-cd Fooddelivery_app/backend
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+cd foodiesapi-backend
 ```
 
-### 2. Configure application.properties
+### 2. Configure environment variables
 
-Edit `src/main/resources/application.properties`:
+The app reads secrets from environment variables. Set these before running:
+
+| Variable | Description |
+|----------|-------------|
+| `MONGODB_URI` | Your MongoDB Atlas connection string |
+| `JWT_SECRET` | A random string (min 32 chars) for signing tokens |
+| `RAZORPAY_KEY` | Your Razorpay API key ID |
+| `RAZORPAY_SECRET` | Your Razorpay API key secret |
+| `CORS_ORIGINS` | Comma-separated allowed frontend URLs |
+| `PORT` | Server port (default: `8080`) |
+| `UPLOAD_PATH` | Local file upload directory (default: `uploads`) |
+
+**Option A — Set in your shell (recommended for local dev):**
+
+```bash
+# Windows CMD
+set MONGODB_URI=your_mongodb_connection_string
+set JWT_SECRET=your_jwt_secret_key_min_32_chars
+
+# Windows PowerShell
+$env:MONGODB_URI="your_mongodb_connection_string"
+$env:JWT_SECRET="your_jwt_secret_key_min_32_chars"
+
+# macOS / Linux
+export MONGODB_URI=your_mongodb_connection_string
+export JWT_SECRET=your_jwt_secret_key_min_32_chars
+```
+
+**Option B — Edit `application.properties` locally (never commit with real values):**
 
 ```properties
-# ── MongoDB Atlas ──────────────────────────────────────────────
-spring.data.mongodb.uri=mongodb+srv://foodadmin:<your-password>@cluster0.v41emax.mongodb.net/fooddelivery?retryWrites=true&w=majority&appName=Cluster0
-spring.data.mongodb.database=fooddelivery
-
-# ── JWT ────────────────────────────────────────────────────────
-jwt.secret=your_jwt_secret_key_min_32_chars_here
-jwt.expiration=86400000
-
-# ── Razorpay ───────────────────────────────────────────────────
-razorpay.key.id=rzp_test_S5KOFCUas1wpGU
-razorpay.key.secret=your_razorpay_key_secret
-
-# ── File Upload ────────────────────────────────────────────────
-spring.servlet.multipart.max-file-size=10MB
-spring.servlet.multipart.max-request-size=10MB
-
-# ── CORS ───────────────────────────────────────────────────────
+spring.data.mongodb.uri=YOUR_MONGODB_URI
+jwt.secret.key=YOUR_JWT_SECRET
+razorpay.key=YOUR_RAZORPAY_KEY_ID
+razorpay.secret=YOUR_RAZORPAY_SECRET
 cors.allowed-origins=http://localhost:5173,http://localhost:5174
-
-# ── Server ─────────────────────────────────────────────────────
-server.port=8080
 ```
 
-> ⚠️ Never commit `application.properties` with real secrets to Git. Add it to `.gitignore`.
+> Never commit `application.properties` with real credentials. Add it to `.gitignore`.
 
 ### 3. Run the server
 
 ```bash
-# Option A — Maven wrapper (recommended)
+# Windows — Maven wrapper
+mvnw.cmd spring-boot:run
+
+# macOS / Linux — Maven wrapper
 ./mvnw spring-boot:run
 
-# Option B — Build JAR then run
-./mvnw clean package -DskipTests
-java -jar target/fooddelivery-*.jar
+# Or build a JAR first, then run
+mvnw.cmd clean package -DskipTests
+java -jar target/foodiesapi-0.0.1-SNAPSHOT.jar
 ```
 
 Server starts at **http://localhost:8080**
 
 ---
 
-## pom.xml Dependencies
+## Admin Account
 
-```xml
-<dependencies>
+An admin account is automatically created on first startup via `AdminSeeder.java`.
 
-    <!-- Spring Boot Web -->
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
+Set the admin credentials using environment variables:
 
-    <!-- MongoDB -->
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-data-mongodb</artifactId>
-    </dependency>
+| Variable | Description |
+|----------|-------------|
+| `ADMIN_EMAIL` | Admin login email |
+| `ADMIN_PASSWORD` | Admin login password |
+| `ADMIN_NAME` | Admin display name |
 
-    <!-- Spring Security -->
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
+If not set, the seeder uses safe defaults defined in `AdminSeeder.java`.
 
-    <!-- JWT -->
-    <dependency>
-        <groupId>io.jsonwebtoken</groupId>
-        <artifactId>jjwt-api</artifactId>
-        <version>0.11.5</version>
-    </dependency>
-    <dependency>
-        <groupId>io.jsonwebtoken</groupId>
-        <artifactId>jjwt-impl</artifactId>
-        <version>0.11.5</version>
-        <scope>runtime</scope>
-    </dependency>
-    <dependency>
-        <groupId>io.jsonwebtoken</groupId>
-        <artifactId>jjwt-jackson</artifactId>
-        <version>0.11.5</version>
-        <scope>runtime</scope>
-    </dependency>
-
-    <!-- Razorpay -->
-    <dependency>
-        <groupId>com.razorpay</groupId>
-        <artifactId>razorpay-java</artifactId>
-        <version>1.4.3</version>
-    </dependency>
-
-    <!-- Lombok (optional, reduces boilerplate) -->
-    <dependency>
-        <groupId>org.projectlombok</groupId>
-        <artifactId>lombok</artifactId>
-        <optional>true</optional>
-    </dependency>
-
-    <!-- Test -->
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-test</artifactId>
-        <scope>test</scope>
-    </dependency>
-
-</dependencies>
-```
+To grant admin access to an existing user, set their `role` field to `ADMIN` in MongoDB Atlas.
 
 ---
 
@@ -230,7 +195,12 @@ Content-Type: application/json
 ```
 Response `200 OK`:
 ```json
-{ "token": "eyJhbGciOiJIUzI1NiJ9..." }
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "role": "USER",
+  "name": "John Doe",
+  "userId": "64abc..."
+}
 ```
 
 ---
@@ -241,29 +211,6 @@ Response `200 OK`:
 ```
 GET /api/foods
 ```
-Response `200 OK`:
-```json
-[
-  {
-    "id": "64abc...",
-    "name": "Chicken Biryani",
-    "description": "Aromatic basmati rice...",
-    "price": 250.0,
-    "category": "Biryani",
-    "imageUrl": "http://localhost:8080/images/biryani.jpg"
-  }
-]
-```
-
----
-
-#### Get food by ID
-```
-GET /api/foods/{id}
-```
-Response `200 OK`: single food object
-
----
 
 #### Add food (Admin)
 ```
@@ -277,16 +224,12 @@ price=250
 category=Biryani
 image=<file>
 ```
-Response `201 Created`: created food object
-
----
 
 #### Delete food (Admin)
 ```
 DELETE /api/foods/{id}
 Authorization: Bearer <admin_token>
 ```
-Response `200 OK`: `{ "message": "Food deleted" }`
 
 ---
 
@@ -297,19 +240,8 @@ Response `200 OK`: `{ "message": "Food deleted" }`
 GET /api/cart
 Authorization: Bearer <token>
 ```
-Response `200 OK`:
-```json
-{
-  "items": {
-    "64abc...": 2,
-    "64def...": 1
-  }
-}
-```
 
----
-
-#### Add item to cart
+#### Add item
 ```
 POST /api/cart
 Authorization: Bearer <token>
@@ -317,9 +249,6 @@ Content-Type: application/json
 
 { "foodId": "64abc..." }
 ```
-Response `200 OK`: updated cart
-
----
 
 #### Remove one quantity
 ```
@@ -329,16 +258,12 @@ Content-Type: application/json
 
 { "foodId": "64abc..." }
 ```
-Response `200 OK`: updated cart
-
----
 
 #### Clear cart
 ```
 DELETE /api/cart/clear
 Authorization: Bearer <token>
 ```
-Response `200 OK`: `{ "message": "Cart cleared" }`
 
 ---
 
@@ -351,35 +276,13 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "userAddress": "John Doe, 123 Main St, Mumbai, Maharashtra, 400001",
+  "userAddress": "123 Main St, Mumbai",
   "phoneNumber": "9876543210",
   "email": "john@example.com",
   "amount": 385.00,
-  "orderStatus": "preparing",
-  "orderedItems": [
-    {
-      "foodId": "64abc...",
-      "name": "Chicken Biryani",
-      "description": "...",
-      "category": "Biryani",
-      "imageUrl": "...",
-      "quantities": 2,
-      "price": 500.00
-    }
-  ]
+  "orderedItems": [...]
 }
 ```
-Response `201 Created`:
-```json
-{
-  "id": "64xyz...",
-  "razorpayOrderId": "order_ABC123",
-  "amount": 38500,
-  "currency": "INR"
-}
-```
-
----
 
 #### Verify payment
 ```
@@ -388,32 +291,23 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "razorpay_payment_id": "pay_ABC...",
-  "razorpay_order_id": "order_ABC...",
-  "razorpay_signature": "abc123..."
+  "razorpay_payment_id": "pay_...",
+  "razorpay_order_id": "order_...",
+  "razorpay_signature": "..."
 }
 ```
-Response `200 OK`: `{ "message": "Payment verified" }`
-
----
 
 #### Get user's orders
 ```
 GET /api/orders
 Authorization: Bearer <token>
 ```
-Response `200 OK`: array of order objects
-
----
 
 #### Get all orders (Admin)
 ```
 GET /api/orders/all
 Authorization: Bearer <admin_token>
 ```
-Response `200 OK`: array of all orders
-
----
 
 #### Update order status (Admin)
 ```
@@ -423,161 +317,142 @@ Content-Type: application/json
 
 { "orderStatus": "out for delivery" }
 ```
-Response `200 OK`: updated order
 
 ---
 
-#### Delete order
+### Users (Admin)
+
+#### Get all users
 ```
-DELETE /api/orders/{id}
-Authorization: Bearer <token>
+GET /api/users
+Authorization: Bearer <admin_token>
 ```
-Response `200 OK`: `{ "message": "Order deleted" }`
+
+#### Update user status
+```
+PUT /api/users/{id}/status
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{ "accountStatus": "BLOCKED" }
+```
+
+#### Delete user
+```
+DELETE /api/users/{id}
+Authorization: Bearer <admin_token>
+```
 
 ---
 
-## MongoDB Document Models
+## MongoDB Collections
 
-### User
-```java
-@Document(collection = "users")
-public class User {
-    @Id
-    private String id;
-    private String name;
-    private String email;
-    private String password;       // BCrypt hashed
-    private String role = "USER";  // USER | ADMIN
-}
-```
+Collections are created automatically on first insert — no migrations needed.
 
-### Food
-```java
-@Document(collection = "foods")
-public class Food {
-    @Id
-    private String id;
-    private String name;
-    private String description;
-    private double price;
-    private String category;
-    private String imageUrl;
-}
-```
-
-### Cart
-```java
-@Document(collection = "carts")
-public class Cart {
-    @Id
-    private String id;
-    private String userId;
-    private Map<String, Integer> items = new HashMap<>(); // foodId → qty
-}
-```
-
-### Order
-```java
-@Document(collection = "orders")
-public class Order {
-    @Id
-    private String id;
-    private String userId;
-    private String userAddress;
-    private String phoneNumber;
-    private String email;
-    private List<OrderItem> orderedItems;
-    private double amount;
-    private String orderStatus = "preparing";
-    private String razorpayOrderId;
-    private String razorpayPaymentId;
-    private LocalDateTime createdAt = LocalDateTime.now();
-}
-```
-
-### OrderItem (embedded in Order)
-```java
-public class OrderItem {
-    private String foodId;
-    private String name;
-    private String description;
-    private String category;
-    private String imageUrl;
-    private int quantities;
-    private double price;
-}
-```
+| Collection | Description |
+|------------|-------------|
+| `users` | Registered users and admins |
+| `foods` | Food menu items |
+| `carts` | Per-user shopping carts |
+| `orders` | All placed orders |
+| `loginhistory` | User login tracking |
 
 ---
 
 ## MongoDB Atlas Setup
 
 1. Go to [MongoDB Atlas](https://cloud.mongodb.com)
-2. **Network Access** → Add IP `0.0.0.0/0` (dev) or your server IP (prod)
-3. **Database Access** → Confirm user `foodadmin` has `readWrite` on `fooddelivery`
-4. Collections are created automatically on first insert — no migrations needed
+2. **Network Access** → Add IP `0.0.0.0/0` for development, or your server IP for production
+3. **Database Access** → Create a user with `readWrite` access on your database
+4. Copy the connection string and set it as `MONGODB_URI`
 
 ---
 
 ## Environment Variables (Production)
 
-Use `application-prod.properties` with environment variables — never hardcode secrets:
+Use `application-prod.properties` — all values come from environment variables:
 
 ```properties
 spring.data.mongodb.uri=${MONGODB_URI}
-jwt.secret=${JWT_SECRET}
-razorpay.key.id=${RAZORPAY_KEY_ID}
-razorpay.key.secret=${RAZORPAY_KEY_SECRET}
+jwt.secret.key=${JWT_SECRET}
+razorpay.key=${RAZORPAY_KEY}
+razorpay.secret=${RAZORPAY_SECRET}
 cors.allowed-origins=${CORS_ORIGINS}
+server.port=${PORT:8080}
 ```
 
 Activate the prod profile:
 ```bash
-java -jar target/fooddelivery-*.jar --spring.profiles.active=prod
+java -jar target/foodiesapi-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 ```
 
 ---
 
 ## Deployment
 
-### Render (recommended free tier)
+### Render (Docker — recommended)
+
+Render does not have a native Java runtime. Use the included `Dockerfile` instead.
 
 1. Push backend to GitHub
-2. New Web Service on [render.com](https://render.com)
-3. Build command: `./mvnw clean package -DskipTests`
-4. Start command: `java -jar target/fooddelivery-*.jar`
-5. Add env vars in the Render dashboard
+2. Go to [render.com](https://render.com) → **New Web Service**
+3. Connect your GitHub repo
+4. **Runtime:** select **Docker** (not Java)
+5. Render will automatically use the `Dockerfile` in the repo root
+6. Add environment variables in the Render dashboard:
+
+| Key | Value |
+|-----|-------|
+| `MONGODB_URI` | Your Atlas connection string |
+| `JWT_SECRET` | Random 32+ char string |
+| `RAZORPAY_KEY` | Your Razorpay key ID |
+| `RAZORPAY_SECRET` | Your Razorpay key secret |
+| `CORS_ORIGINS` | Your Vercel frontend URLs (comma-separated) |
+
+7. Deploy — Render builds the Docker image and starts the container
+
+The included `Dockerfile` uses a multi-stage build:
+- **Stage 1:** Maven + JDK 21 builds the JAR
+- **Stage 2:** JRE 21 runs the JAR (smaller final image)
+
+---
 
 ### Railway
 
 1. New project on [railway.app](https://railway.app)
 2. Deploy from GitHub
-3. Add env vars — no DB plugin needed (using Atlas)
+3. Add environment variables in the Railway dashboard
+4. Railway auto-detects the `Dockerfile`
+
+---
 
 ### VPS (Ubuntu + systemd)
 
 ```bash
-# Copy JAR
-scp target/fooddelivery-*.jar user@yourserver:/opt/fooddelivery/
+# Build JAR locally
+mvnw.cmd clean package -DskipTests
 
-# /etc/systemd/system/fooddelivery.service
+# Copy to server
+scp target/foodiesapi-0.0.1-SNAPSHOT.jar user@yourserver:/opt/foodiesapi/
+
+# Create /etc/systemd/system/foodiesapi.service
 [Unit]
-Description=Food Delivery Backend
+Description=Foodies API Backend
 After=network.target
 
 [Service]
 User=ubuntu
-EnvironmentFile=/opt/fooddelivery/.env
-ExecStart=/usr/bin/java -jar /opt/fooddelivery/fooddelivery.jar --spring.profiles.active=prod
+EnvironmentFile=/opt/foodiesapi/.env
+ExecStart=/usr/bin/java -jar /opt/foodiesapi/foodiesapi-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 
-# Start
-sudo systemctl enable fooddelivery
-sudo systemctl start fooddelivery
-sudo systemctl status fooddelivery
+# Enable and start
+sudo systemctl enable foodiesapi
+sudo systemctl start foodiesapi
+sudo systemctl status foodiesapi
 ```
 
 ---
@@ -586,22 +461,25 @@ sudo systemctl status fooddelivery
 
 - Passwords are hashed with **BCrypt** — never stored in plain text
 - JWT tokens expire after **24 hours** (configurable via `jwt.expiration`)
-- Admin endpoints should be protected by role check (`ROLE_ADMIN`)
-- Never commit `application.properties` with real credentials — use `.gitignore`
-- Rotate your MongoDB Atlas password if it was ever exposed publicly
+- Admin endpoints are protected by role check (`ADMIN`)
+- Never commit `application.properties` with real credentials
+- Use environment variables for all secrets in production
 
 ---
 
-## .gitignore (add to backend root)
+## .gitignore
+
+Add these to your `.gitignore` to avoid committing secrets:
 
 ```
 target/
 *.jar
 *.class
-src/main/resources/application.properties
-src/main/resources/application-prod.properties
 .env
+src/main/resources/application-local.properties
 ```
+
+The main `application.properties` uses `${ENV_VAR:default}` syntax — safe to commit as long as defaults don't contain real production secrets.
 
 ---
 
