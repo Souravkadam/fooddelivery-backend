@@ -17,7 +17,7 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret.key}")
+    @Value("${jwt.secret.key:FoodiesAppJwtSecretKeyForSecureLogin12345}")
     private String SECRET_KEY;
 
     private SecretKey getSigningKey() {

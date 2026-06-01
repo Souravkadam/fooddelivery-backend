@@ -36,10 +36,10 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final FoodRepository foodRepository;
 
-    @Value("${razorpay.key}")
+    @Value("${razorpay.key:rzp_test_SkCF8SuhtObi2q}")
     private String razorpayKey;
 
-    @Value("${razorpay.secret}")
+    @Value("${razorpay.secret:dummy_secret}")
     private String razorpaySecret;
 
     @Autowired
