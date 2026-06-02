@@ -33,8 +33,18 @@ public class AdminSeeder implements CommandLineRunner {
     public void run(String... args) {
 
         // Check if admin already exists
-        if (userRepository.findByEmail(ADMIN_EMAIL).isPresent()) {
-            System.out.println("✅ Admin account already exists — skipping seed.");
+        var existing = userRepository.findByEmail(ADMIN_EMAIL);
+        if (existing.isPresent()) {
+            UserEntity user = existing.get();
+            // Fix role if it was created as USER before
+            if (!"ADMIN".equals(user.getRole())) {
+                user.setRole("ADMIN");
+                user.setAccountStatus("ACTIVE");
+                userRepository.save(user);
+                System.out.println("✅ Admin role updated to ADMIN for: " + ADMIN_EMAIL);
+            } else {
+                System.out.println("✅ Admin account already exists — skipping seed.");
+            }
             return;
         }
 
